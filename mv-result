@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+import os
+import sys
+import os.path
+
+argc = len(sys.argv)
+
+if argc == 1:
+	print("You should pass 1+ arguments.")
+	exit()
+
+mvdir = "~/NS3-SOP-Simulation/%s" % sys.argv[1]
+
+if os.path.exists(mvdir):
+	print("This folder is existed.")
+	exit()
+
+# os.chdir(os.path.expanduser("~/NS3-SOP-Simulation"))
+
+os.system("./pull-sop")
+os.system("mkdir -p %s" % mvdir )
+os.system("mv MYSIM* %s/" % mvdir )
+os.system( ("./push-sop \"mv-result: %s\"" % mvdir) )

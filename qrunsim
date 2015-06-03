@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import re
+import subprocess
+
+
+argc = len(sys.argv)
+
+
+def say(msg):
+  # os.system("say -v Mei-Jia %s" % (msg))
+  os.system("say %s" % (msg))
+
+def alert(msg):
+  os.system("osascript -e 'tell app \"System Events\" to display dialog \"%s\"' >/dev/null 2>&1" % (msg) )
+
+
+if argc == 1:
+  print("You should pass 1+ arguments.")
+
+
+
+if argc >= 2:
+
+  switch = {
+    "p" : "runsim scratch/build-plot/build-plot.cc",
+    "1" : "runsim scratch/mysim/mysim.cc",
+    "2" : "runsim scratch/mysim/mysim.cc \"*=info\"",
+    "3" : "runsim scratch/mysim/mysim.cc debug",
+    "4" : "runsim examples/tcp/tcp-large-transfer.cc debug",
+    "5" : "runsim scratch/mythrid.cc"
+  }
+  print(switch[sys.argv[1]])
+  os.system(switch[sys.argv[1]])
+  say("Simulation is finished")
+

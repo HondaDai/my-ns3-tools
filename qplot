@@ -1,0 +1,88 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import re
+import subprocess
+import jinja2
+
+
+argc = len(sys.argv)
+
+
+def say(msg):
+  # os.system("say -v Mei-Jia %s" % (msg))
+  os.system("say %s" % (msg))
+
+def alert(msg):
+  os.system("osascript -e 'tell app \"System Events\" to display dialog \"%s\"' >/dev/null 2>&1" % (msg) )
+
+def build_set_variable(name, val):
+  return "{%% set %s = \"%s\" %%}" % (name, val)
+
+
+def gnuplot(mfilepath, arg = ""):
+  print("Draw: %s %s" % (mfilepath, arg))
+
+  config = open("config.plt").read()
+  if mfilepath.endswith(".rb.plt"):
+    mainfile = subprocess.check_output("ruby "+mfilepath, shell=True)
+  else:    
+    mainfile = open(mfilepath).read()
+  content = jinja2.Template(config+arg+mainfile).render()
+  # os.system("gnuplot -c %s" % (sys.argv[1]) )
+  tmpfile = "qplot.tmp.plt"
+  f = open(tmpfile, "w")
+  f.write(content)
+  f.close()
+  os.system("gnuplot -c \"%s\"" % tmpfile )
+  # os.system("rm %s" % tmpfile)
+  m = re.search('set\s+output\s+["](.+)["]', content)
+  if m:
+    os.system("subl %s" % (m.group(1)) )
+
+
+if argc == 1:
+  print("You should pass 1+ arguments.")
+
+
+if argc == 2:
+  
+
+  if sys.argv[1] == "quick":
+    os.system("%s %s" % (sys.argv[0], "PlotOnOff.plt"))
+    os.system("%s %s" % (sys.argv[0], "PlotPartOnOff.plt"))
+    os.system("%s %s" % (sys.argv[0], "PlotPartFreqOnOff.plt"))
+    os.system("%s %s" % (sys.argv[0], "srvsent"))
+    os.system("%s %s" % (sys.argv[0], "prosent"))
+    os.system("%s %s" % (sys.argv[0], "srvcwnd"))
+    os.system("%s %s" % (sys.argv[0], "procwnd"))
+    os.system("%s %s" % (sys.argv[0], "PlotQueueSize.plt"))
+    os.system("%s %s" % (sys.argv[0], "PlotSentBytesAccu.plt"))
+    os.system("%s %s" % (sys.argv[0], "PlotSentBytesSame.plt"))
+    os.system("%s %s" % (sys.argv[0], "PlotUsedTime.plt"))
+    os.system("%s %s" % (sys.argv[0], "PlotAccuUsedTime.plt"))
+    os.system("%s %s" % (sys.argv[0], "PlotPartOnOffHist.rb.plt"))
+    exit()
+
+  if sys.argv[1] == "srvsent":
+    gnuplot("PlotSent.plt", build_set_variable("peer", "srv"))
+    exit()
+  if sys.argv[1] == "prosent":
+    gnuplot("PlotSent.plt", build_set_variable("peer", "pro"))
+    exit()
+  if sys.argv[1] == "srvcwnd":
+    gnuplot("PlotCwnd.plt", build_set_variable("peer", "srv"))
+    exit()
+  if sys.argv[1] == "procwnd":
+    gnuplot("PlotCwnd.plt", build_set_variable("peer", "pro"))
+    exit()
+
+  gnuplot(sys.argv[1])
+
+if argc == 3:
+  pass
+
+# qplot cwnd srv
+
+  

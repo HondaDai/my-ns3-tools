@@ -1,0 +1,271 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import re
+import subprocess
+from pprint import pprint
+import signal
+import time
+import platform
+
+
+argc = len(sys.argv)
+pros = []
+
+def say(msg):
+  if platform.system() == 'Darwin':
+    # os.system("say -v Mei-Jia %s" % (msg))
+    os.system("say %s" % (msg))
+
+def alert(msg):
+  if platform.system() == 'Darwin':
+    os.system("osascript -e 'tell app \"System Events\" to display dialog \"%s\"' >/dev/null 2>&1" % (msg) )
+
+
+def build_mysim(mysim_param):
+  mapper = lambda x: "./waf --run \"scratch/mysim/mysim %s\"" % (x)
+  return map (mapper, mysim_param)
+
+def build_mysim_param(origin_cross, times=1, from_idx=0):
+  result = []
+  for i in xrange(0, times):
+    i = i + from_idx
+    for oc in origin_cross:
+      result.append(" --RngRun=%d --resultPrefix=MYSIM-%d-%s %s" % (i, i, oc, origin_cross[oc]) )
+  return result
+
+def cross(origin, keys):
+  result = {}
+  if origin == {}:
+    return keys
+
+  for o in origin:
+    for k in keys:
+      result.update({"-".join([o,k]) : " ".join([origin[o], keys[k]])})
+  return result
+
+
+
+# pprint(build_mysim_param(cli_size, 10))
+
+
+def exit_gracefully(signum, frame):
+  # # restore the original signal handler as otherwise evil things will happen
+  # # in raw_input when CTRL+C is pressed, and our signal handler is not re-entrant
+  # signal.signal(signal.SIGINT, original_sigint)
+
+  # try:
+  #   if raw_input("\nReally quit? (y/n)> ").lower().startswith('y'):
+  #       sys.exit(1)
+
+  # except KeyboardInterrupt:
+  #   print("Ok ok, quitting")
+  #   sys.exit(1)
+
+  # # restore the exit gracefully handler here    
+  # signal.signal(signal.SIGINT, exit_gracefully)
+  
+  # for i in xrange(len(pros)):
+  #   print(pros[i].communicate())
+  #   os.killpg(pro[i].pid, signal.SIGTERM)
+  
+  os.system("killall mysim")
+  sys.exit(1)
+
+def ip():
+  import socket
+  return socket.gethostbyname_ex(socket.gethostname())[-1][-1]
+
+def default(l, idx, def_v):
+  return l[idx] if len(l) > idx else def_v
+
+def wait_process():
+  while (True):
+    completed = []
+    l = len(pros)
+    for i in xrange(l):
+      if pros[i].poll() is not None:
+        completed.append(i)
+
+    for i in xrange(len(completed)-1, -1, -1):
+      # pros[completed[i]].terminate()
+      print(completed[i])
+      del pros[completed[i]]
+
+    if l == len(completed):
+      break
+    else:
+      print("%d of %d is completed" % (len(completed), len(pros)))
+      time.sleep(10)
+
+
+original_sigint = signal.getsignal(signal.SIGINT)
+signal.signal(signal.SIGINT, exit_gracefully)
+
+
+attr = [
+  {"pro":"--enableProxy=true", "srv":"--enableProxy=false"},
+  # {"pro":"--enableProxy=true"},
+  # {"srv":"--enableProxy=false"},
+
+  # {"1c":"--clientSize=1", "5c":"--clientSize=5"},
+  # {"400c":"--clientSize=400"},
+  {"5c":"--clientSize=5"},
+  # {"100c":"--clientSize=100", 
+  #  "200c":"--clientSize=200", 
+  #  "300c":"--clientSize=300", 
+  #  "400c":"--clientSize=400", 
+  #  "500c":"--clientSize=500",} ,
+
+  {"0er":"--errorRate=0", "0.01er":"--errorRate=0.01"},
+  # {"0.01er":"--errorRate=0.01"},
+  # {"0er":"--errorRate=0"},
+
+  {"0d":"--proxyServerDelay=0ms", "100d":"--proxyServerDelay=100ms"},
+  # {"100d":"--proxyServerDelay=100ms"},
+  # {"0d":"--proxyServerDelay=0ms"},
+
+  # {"10f":"--fileSize=10"},
+  {"10f":"--fileSize=10"},
+
+  {"10l":"--lambdaReciprocal=10"},
+  # {"0l":"--lambdaReciprocal=0"},
+]
+from_idx = 0 # default is 0
+
+
+if argc == 1:
+  print("You should pass 1+ arguments.")
+
+
+db_conf_path = "godb.conf"
+db_conf = {k.strip(): v.strip() for k, v in [kv.split("=") for kv in open(db_conf_path).read().split("\n")] }
+
+host_list = [ip()]
+# host_list = ['192.168.107.42','192.168.107.115','192.168.107.116','192.168.107.118','192.168.107.119']
+job_worker = {}
+
+
+
+params = reduce(cross, attr, {})
+
+if sys.argv[1] == "help":
+  to_idx = int(default(sys.argv, 2, 1))
+else:
+  to_idx = int(sys.argv[1])
+
+_dests = list(set([p.split('-')[0] for p in params]))
+_params = list(set(['-'.join(p.split('-')[1:]) for p in params]))
+_seeds = [str(i) for i in range(from_idx, to_idx)]
+
+
+# init go db
+argv = [
+  "-action", "init",
+  "-schema", db_conf['schema_name'],
+  "-params", ",".join(_params),
+  "-dests", ",".join(_dests),
+  "-seeds", ",".join(_seeds),
+]
+os.system(db_conf['program_path']+"/"+db_conf['program_name']+" "+" ".join(argv))
+
+
+params = build_mysim_param(params, to_idx, from_idx)
+
+cur = 0
+while len(params) > 0:
+  v = params[0] if len(params)%2 == 0 else params[-1]
+  job = job_worker.get(host_list[cur], [])
+  job = job + [v]
+  job_worker[host_list[cur]] = job
+  # del params[k]
+  params.remove(v)
+  cur = (cur + 1) % len(host_list)
+
+
+if sys.argv[1] == "help":
+  os.system("./waf --run \"scratch/mysim/mysim --PrintHelp\"")
+
+  my_job = []
+  for host in host_list:
+    print("%s:" % host )
+    if job_worker.get(host, []) == []:
+      print("\tno job")
+      continue
+    params = job_worker[host]
+    
+    if host == ip():
+      my_job = params
+    for i in xrange(len(params)):
+      print("\t%d: %s" % (i, params[i]))
+    print("\t%d job" % (len(params)))
+    # pprint(build_mysim(params))
+
+  print("\n\nYou(%s) have %d job to do." % (ip(), len(my_job)))
+
+  # if argc == 2:
+  #   a = build_mysim_param(params)
+  #   pprint(a)
+  #   print("%d parts of simulation: " % (len(a)))
+  # else:
+  #   a = build_mysim_param(params, int(sys.argv[2]))
+  #   pprint(a)
+  #   print("%d parts of simulation: " % (len(a)))
+  
+elif sys.argv[1] == "clear":
+  os.system("rm MYSIM-*")
+# elif sys.argv[1] == "draw":
+#   if argc == 2:
+#     pprint(params)
+#     os.system("waf --run \"scratch/build-plot/build-plot.cc \"")
+#   else:
+#     print("please pass round")
+  
+else:
+  params = job_worker.get(ip(), [])
+
+  if params == []:
+    print("no job")
+    exit()
+
+  parallel_size = 2
+  if platform.system() != 'Darwin':
+    parallel_size = 20
+
+  print("parallel_size: %d" %(parallel_size) )
+
+  os.putenv("NS_LOG","*=error")
+  mysims = build_mysim(params)
+
+  os.system("rm MYSIM*")
+  os.system("./waf")
+  for i in xrange(0, len(mysims)):
+
+    if len(pros) < parallel_size:
+      msg = "start %d over %d" %(i, len(mysims))
+      print(msg)
+      print("  "+mysims[i])
+      # say(msg)
+      # cmd = "%s >/dev/null 2>&1" % mysims[i]
+      cmd = "%s >> log-%d.txt 2>&1" % (mysims[i], i)
+
+      # cmd = "echo !!%d && sleep 5 && echo !!!!%d" % (i, i)
+
+      # os.system(cmd)
+      # pro = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid) 
+      
+      pro = subprocess.Popen(cmd, shell=True, preexec_fn=os.setsid)
+      pros.append(pro)
+      # print("ADD %d" % i)
+    else:
+      # print("Wait")
+      wait_process()
+      # pros = []
+  wait_process()
+
+  import datetime
+  print(str(datetime.datetime.now()))
+  say("Simulation is finished")
+
+
