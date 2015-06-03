@@ -10,11 +10,13 @@ argc = len(sys.argv)
 
 
 def say(msg):
-  # os.system("say -v Mei-Jia %s" % (msg))
-  os.system("say %s" % (msg))
+  if platform.system() == 'Darwin':
+    # os.system("say -v Mei-Jia %s" % (msg))
+    os.system("say %s" % (msg))
 
 def alert(msg):
-  os.system("osascript -e 'tell app \"System Events\" to display dialog \"%s\"' >/dev/null 2>&1" % (msg) )
+  if platform.system() == 'Darwin':
+    os.system("osascript -e 'tell app \"System Events\" to display dialog \"%s\"' >/dev/null 2>&1" % (msg) )
 
 
 if argc == 1:
