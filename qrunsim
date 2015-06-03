@@ -25,12 +25,12 @@ if argc == 1:
 if argc >= 2:
 
   switch = {
-    "p" : "runsim scratch/build-plot/build-plot.cc",
-    "1" : "runsim scratch/mysim/mysim.cc",
-    "2" : "runsim scratch/mysim/mysim.cc \"*=info\"",
-    "3" : "runsim scratch/mysim/mysim.cc debug",
-    "4" : "runsim examples/tcp/tcp-large-transfer.cc debug",
-    "5" : "runsim scratch/mythrid.cc"
+    "p" : "./runsim scratch/build-plot/build-plot.cc",
+    "1" : "./runsim scratch/mysim/mysim.cc",
+    "2" : "./runsim scratch/mysim/mysim.cc \"*=info\"",
+    "3" : "./runsim scratch/mysim/mysim.cc debug",
+    "4" : "./runsim examples/tcp/tcp-large-transfer.cc debug",
+    "5" : "./runsim scratch/mythrid.cc"
   }
   print(switch[sys.argv[1]])
   os.system(switch[sys.argv[1]])
