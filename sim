@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+
+require 'thor'
+
+
+# puts ARGV
+
+
+class Sim < Thor
+  # default_command :run
+
+  desc "r", "Run simulation"
+  def r(filepath)
+    cmd = "./waf --run #{filepath.gsub(".cc", "").gsub("./", "")}"
+    puts cmd
+    exec(cmd)
+  end
+
+  desc "d", "Debug run simulation"
+  def d(filepath)
+    cmd = "./waf --run #{filepath.gsub(".cc", "").gsub("./", "")} --command-template=\"gdb %s\""
+    puts cmd
+    exec(cmd)
+  end
+
+  desc "q", "Quick run simulation"
+  def q(name)
+    puts "hello #{name}"
+  end
+
+  desc "alert", "Alert message"
+  def alert(msg)
+    `osascript -e 'tell app \"System Events\" to display dialog \"#{msg}\"' >/dev/null 2>&1`
+  end
+
+  desc "say", "Say message"
+  def say(msg)
+    `say #{msg}`
+  end
+
+
+end
+
+
+
+
+Sim.start

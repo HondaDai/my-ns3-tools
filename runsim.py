@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env ruby
 
 import sys
 import os
@@ -17,7 +17,6 @@ filepath = sys.argv[1]
 debug = False
 if argc > 2:
   if sys.argv[2] == "debug":
-    # os.putenv("NS_LOG", "*=info|prefix_func:DcfManager=error")
     seeclass = [
       "MySim", 
       "BulkSendApplication",
