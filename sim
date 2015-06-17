@@ -18,24 +18,29 @@ class Sim < Thor
 
   desc "d", "Debug run simulation"
   def d(filepath)
-    cmd = "./waf --run #{filepath.gsub(".cc", "").gsub("./", "")} --command-template=\"gdb %s\""
+    cmd = "./waf --run #{filepath.gsub(".cc", "").gsub("./", "")} --command-template=\"sudo gdb %s\""
     puts cmd
     exec(cmd)
   end
 
   desc "q", "Quick run simulation"
-  def q(name)
-    puts "hello #{name}"
+  def q(c)
+    case c
+    when "1"
+      r("scratch/mysim/mysim.cc")
+    else
+      puts "no match task"
+    end
   end
 
   desc "alert", "Alert message"
   def alert(msg)
-    `osascript -e 'tell app \"System Events\" to display dialog \"#{msg}\"' >/dev/null 2>&1`
+    `osascript -e 'tell app \"System Events\" to display dialog \"#{msg}\"' >/dev/null 2>&1` if RUBY_PLATFORM =~ /darwin/
   end
 
   desc "say", "Say message"
   def say(msg)
-    `say #{msg}`
+    `say #{msg}` if RUBY_PLATFORM =~ /darwin/
   end
 
 

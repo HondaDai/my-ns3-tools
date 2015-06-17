@@ -24,4 +24,4 @@ git config --global user.email "s4582123@gmail.com"
 git config --global user.name "HondaDai"
 
 CXXFLAGS='-O3' ./waf configure -d optimized
-CXXFLAGS='-O3' ./waf configure -d optimized
+./waf configure -d debug
